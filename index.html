@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Untitled</title>
+  
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>School Countdown</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #222;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  /* Top bar */
+  .topbar {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  select {
+    padding: 8px;
+    font-size: 1rem;
+    border-radius: 6px;
+  }
+  button.info-btn {
+    background: #444;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  button.info-btn:hover {
+    background: #666;
+  }
+  /* Main countdown */
+  #eventName {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  #daysRemaining {
+    font-size: 10vw;
+    font-weight: bold;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  #countdown {
+    font-size: 3vw;
+    margin-top: 20px;
+    font-family: monospace;
+  }
+  /* Info modal */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #333;
+    color: #eee;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 400px;
+    text-align: left;
+    box-shadow: 0 0 20px rgba(0,0,0,0.7);
+    z-index: 999;
+  }
+  .modal h2 { margin-top: 0; }
+  .modal button {
+    margin-top: 15px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #555;
+    color: #fff;
+    cursor: pointer;
+  }
+  .modal button:hover { background: #777; }
+
+  /* Add-on styles */
+  .inline-info-btn{
+    margin-left:10px;background:#444;color:#fff;border:none;
+    width:28px;height:28px;border-radius:50%;cursor:pointer
+  }
+  .inline-info-btn:hover{background:#666}
+  .more-btn{
+    background:#444;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer
+  }
+  .more-btn:hover{background:#666}
+  .more-menu{
+    position:absolute;top:50px;right:10px;background:#333;color:#eee;border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.4);display:none;min-width:260px;z-index:1000
+  }
+  .more-menu .item{padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08)}
+  .more-menu .item:hover{background:#3a3a3a}
+  .more-menu .section{padding:10px 14px}
+  .more-menu .section h4{margin:0 0 6px 0;font-size:.95rem;color:#ccc}
+  .more-menu .section input{
+    width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#222;color:#eee
+  }
+  .more-menu .section button{
+    margin-top:8px;padding:6px 10px;border:none;border-radius:8px;background:#555;color:#fff;cursor:pointer
+  }
+  .more-menu .section button:hover{background:#777}
+  .help-btn{
+    position:fixed;left:10px;bottom:10px;background:#444;color:#fff;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;z-index:1000
+  }
+  .help-btn:hover{background:#666}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <select id="eventSelector">
+    <option value="lastDay">Last Day of School</option>
+    <option value="winterBreak">Winter Break</option>
+    <option value="springBreak">Spring Break</option>
+  </select>
+  <button class="info-btn" onclick="openInfo()">i</button>
+  <!-- Added via script: More Countdowns button -->
+</div>
+
+<div id="eventName">Last Day of School</div>
+<div>
+  <span id="daysRemaining">Loading...</span>
+  <!-- Added via script: small info button next to days -->
+</div>
+<div id="countdown">--:--:--</div>
+
+<!-- Info modal -->
+<div class="modal" id="infoModal">
+  <h2>Countdown Info</h2>
+  <p><b>Last Day of School:</b> Countdown until the final school day.</p>
+  <p><b>Winter Break:</b> Countdown until the first day of winter break.</p>
+  <p><b>Spring Break:</b> Countdown until the first day of spring break.</p>
+  <button onclick="closeInfo()">Close</button>
+</div>
+
+<!-- Added via script: Active countdown info modal -->
+<!-- Added via script: More Countdowns menu -->
+<!-- Added via script: Help modal -->
+
+<script>
+/* Your original script (unchanged) */
+const events = {
+  lastDay: { name: "Last Day of School", date: "2026-05-28T00:00:00" },
+  winterBreak: { name: "Winter Break", date: "2025-12-22T00:00:00" },
+  springBreak: { name: "Spring Break", date: "2026-03-23T00:00:00" }
+};
+
+let selectedEvent = "lastDay";
+
+function calculateRemainingDays(today, finalDay) {
+  const start = new Date(today);
+  start.setHours(0,0,0,0);
+
+  const end = new Date(finalDay);
+  end.setHours(0,0,0,0);
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const diffTime = end - start;
+
+  return Math.max(0, Math.floor(diffTime / msPerDay) + 1);
+}
+
+function formatTime(seconds) {
+  const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+  const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+  const s = String(seconds % 60).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+function update() {
+  const now = new Date();
+  const todayMidnight = new Date(now);
+  todayMidnight.setHours(0,0,0,0);
+
+  const finalDay = new Date(events[selectedEvent].date);
+  const remainingDays = calculateRemainingDays(todayMidnight, finalDay);
+
+  const nextMidnight = new Date(todayMidnight);
+  nextMidnight.setDate(nextMidnight.getDate() + 1);
+
+  // seconds until next midnight
+  let secondsLeft = Math.floor((nextMidnight - now) / 1000);
+  if (secondsLeft <= 0) secondsLeft = 24 * 3600; // show 24:00:00 at midnight
+
+  // display
+  document.getElementById("eventName").textContent = events[selectedEvent].name;
+  document.getElementById("daysRemaining").textContent = remainingDays;
+  document.getElementById("countdown").textContent = formatTime(secondsLeft);
+}
+
+// Info modal functions
+function openInfo() {
+  document.getElementById("infoModal").style.display = "block";
+}
+function closeInfo() {
+  document.getElementById("infoModal").style.display = "none";
+}
+
+// Dropdown event change
+document.getElementById("eventSelector").addEventListener("change", (e) => {
+  selectedEvent = e.target.value;
+  update();
+});
+
+update();
+setInterval(update, 1000);
+</script>
+
+<script>
+/* === ADD-ON: More Countdowns, exact dates from district calendar,
+   day-over tool to 3:10 PM, per-countdown info button, Help popup. === */
+(function () {
+  // Update dates from district calendar (2025–26)
+  // Thanksgiving Recess begins Wed Nov 26, 2025
+  // Winter Break begins Mon Dec 22, 2025
+  // Spring Break begins Mon Mar 23, 2026
+  // Students’ last day (no emergency days) Fri May 22, 2026
+  events.thanksgivingBreak = { name: "Thanksgiving Break", date: "2025-11-26T00:00:00" };
+  events.winterBreak.date = "2025-12-22T00:00:00";
+  events.springBreak.date = "2026-03-23T00:00:00";
+  events.lastDay.date = "2026-05-22T00:00:00";
+
+  // Ensure Thanksgiving appears in the existing selector
+  const selector = document.getElementById("eventSelector");
+  if (![...selector.options].some(o => o.value === "thanksgivingBreak")) {
+    const opt = document.createElement("option");
+    opt.value = "thanksgivingBreak";
+    opt.textContent = "Thanksgiving Break";
+    selector.appendChild(opt);
+  }
+
+  // Add “More Countdowns” button and menu
+  const topbar = document.querySelector(".topbar");
+  const moreBtn = document.createElement("button");
+  moreBtn.className = "more-btn";
+  moreBtn.textContent = "More Countdowns";
+  const menu = document.createElement("div");
+  menu.className = "more-menu";
+  menu.innerHTML = `
+    <div class="item" data-key="winterBreak">Winter Break</div>
+    <div class="item" data-key="springBreak">Spring Break</div>
+    <div class="item" data-key="thanksgivingBreak">Thanksgiving Break</div>
+    <div class="section">
+      <h4>How long until day is over</h4>
+      <input id="dayOverTime" type="time" />
+      <button id="dayOverGo">Confirm</button>
+      <div id="dayOverResult" style="margin-top:6px;font-family:monospace;"></div>
+    </div>
+  `;
+  topbar.appendChild(moreBtn);
+  document.body.appendChild(menu);
+
+  // Open/close
+  moreBtn.addEventListener("click", () => {
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  });
+  document.addEventListener("click", (e) => {
+    if (!menu.contains(e.target) && e.target !== moreBtn) menu.style.display = "none";
+  });
+
+  // Switch countdown by clicking menu items
+  menu.querySelectorAll(".item").forEach(item => {
+    item.addEventListener("click", () => {
+      const key = item.getAttribute("data-key");
+      selector.value = key;
+      selector.dispatchEvent(new Event("change"));
+      menu.style.display = "none";
+    });
+  });
+
+  // How long until day is over (to 3:10 PM)
+  const dayOverInput = menu.querySelector("#dayOverTime");
+  const dayOverBtn = menu.querySelector("#dayOverGo");
+  const dayOverResult = menu.querySelector("#dayOverResult");
+
+  // prefill with current local time
+  (function prefill() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    dayOverInput.value = `${hh}:${mm}`;
+  })();
+
+  function fmtHMS(sec){
+    const h = String(Math.floor(sec/3600)).padStart(2,"0");
+    const m = String(Math.floor((sec%3600)/60)).padStart(2,"0");
+    const s = String(sec%60).padStart(2,"0");
+    return `${h}:${m}:${s}`;
+  }
+
+  dayOverBtn.addEventListener("click", () => {
+    const v = dayOverInput.value;
+    if (!v) { dayOverResult.textContent = "Please enter a time."; return; }
+    const [hh, mm] = v.split(":").map(Number);
+    const today = new Date();
+    const entered = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hh, mm, 0, 0);
+    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 10, 0, 0); // 3:10 PM
+    if (entered >= end) {
+      dayOverResult.textContent = "School day is over";
+    } else {
+      const sec = Math.floor((end - entered) / 1000);
+      dayOverResult.textContent = fmtHMS(sec);
+    }
+  });
+
+  // Small info button next to days that says what countdown is active
+  const daysEl = document.getElementById("daysRemaining");
+  const inlineInfo = document.createElement("button");
+  inlineInfo.className = "inline-info-btn";
+  inlineInfo.textContent = "i";
+  daysEl.insertAdjacentElement("afterend", inlineInfo);
+
+  const activeInfoModal = document.createElement("div");
+  activeInfoModal.className = "modal";
+  activeInfoModal.id = "activeInfoModal";
+  activeInfoModal.innerHTML = `
+    <h2>Active Countdown</h2>
+    <p id="activeInfoText"></p>
+    <button id="activeInfoClose">Close</button>
+  `;
+  document.body.appendChild(activeInfoModal);
+  inlineInfo.addEventListener("click", () => {
+    const key = selector.value;
+    const ev = events[key];
+    const d = new Date(ev.date);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    document.getElementById("activeInfoText").textContent =
+      `${ev.name} on ${d.toLocaleDateString([], { weekday:"long", year:"numeric", month:"long", day:"numeric" })} • ${tz}`;
+    activeInfoModal.style.display = "block";
+  });
+  document.getElementById("activeInfoClose").addEventListener("click", () => {
+    activeInfoModal.style.display = "none";
+  });
+
+  // Help button and popup
+  const helpBtn = document.createElement("button");
+  helpBtn.className = "help-btn";
+  helpBtn.textContent = "Help";
+  document.body.appendChild(helpBtn);
+
+  const helpModal = document.createElement("div");
+  helpModal.className = "modal";
+  helpModal.id = "helpModal";
+  helpModal.innerHTML = `
+    <h2>Help</h2>
+    <p style="white-space:pre-wrap">If there is an issue please just be patient. I'll probably find it soon and get it fixed I apologize in advance. But if something isn't accurate please tell the person you got the website from and eventually it'll get back to me to fix. I'm 1 person not multiple. This website was built with the help from ChatGPT but the idea was entirely human. Thank you-MVM</p>
+    <button id="helpClose">Close</button>
+  `;
+  document.body.appendChild(helpModal);
+  helpBtn.addEventListener("click", () => { helpModal.style.display = "block"; });
+  document.getElementById("helpClose").addEventListener("click", () => { helpModal.style.display = "none"; });
+
+  // Make sure the midnight display shows 24:00:00 exactly at 12:00 AM
+  const originalUpdate = window.update;
+  window.update = function () {
+    originalUpdate();
+    const now = new Date();
+    const todayMidnight = new Date(now); todayMidnight.setHours(0,0,0,0);
+    const nextMidnight = new Date(todayMidnight); nextMidnight.setDate(nextMidnight.getDate() + 1);
+    let secondsLeft = Math.floor((nextMidnight - now) / 1000);
+    if (secondsLeft <= 0) secondsLeft = 24 * 3600;
+    document.getElementById("countdown").textContent = formatTime(secondsLeft);
+  };
+})();
+</script>
+
+</body>
+</html>
+<!-- partial -->
+  
+</body>
+</html>
