@@ -35,11 +35,6 @@
     align-items: center;
     gap: 10px;
   }
-  select {
-    padding: 8px;
-    font-size: 1rem;
-    border-radius: 6px;
-  }
   button.info-btn {
     background: #444;
     color: white;
@@ -49,9 +44,8 @@
     cursor: pointer;
     font-size: 1rem;
   }
-  button.info-btn:hover {
-    background: #666;
-  }
+  button.info-btn:hover { background: #666; }
+
   /* Main countdown */
   #eventName {
     font-size: 2rem;
@@ -131,19 +125,15 @@
 <body>
 
 <div class="topbar">
-  <select id="eventSelector">
-    <option value="lastDay">Last Day of School</option>
-    <option value="winterBreak">Winter Break</option>
-    <option value="springBreak">Spring Break</option>
-  </select>
+  <!-- Removed the white dropdown box -->
   <button class="info-btn" onclick="openInfo()">i</button>
-  <!-- Added via script: More Countdowns button -->
+  <button id="moreBtn" class="more-btn">More Countdowns</button>
 </div>
 
 <div id="eventName">Last Day of School</div>
 <div>
   <span id="daysRemaining">Loading...</span>
-  <!-- Added via script: small info button next to days -->
+  <button id="inlineInfo" class="inline-info-btn" title="Active countdown info">i</button>
 </div>
 <div id="countdown">--:--:--</div>
 
@@ -153,34 +143,59 @@
   <p><b>Last Day of School:</b> Countdown until the final school day.</p>
   <p><b>Winter Break:</b> Countdown until the first day of winter break.</p>
   <p><b>Spring Break:</b> Countdown until the first day of spring break.</p>
+  <p><b>Thanksgiving Break:</b> Countdown until the first day of Thanksgiving break.</p>
   <button onclick="closeInfo()">Close</button>
 </div>
 
-<!-- Added via script: Active countdown info modal -->
-<!-- Added via script: More Countdowns menu -->
-<!-- Added via script: Help modal -->
+<!-- Active countdown info modal -->
+<div class="modal" id="activeInfoModal">
+  <h2>Active Countdown</h2>
+  <p id="activeInfoText"></p>
+  <button id="activeInfoClose">Close</button>
+</div>
+
+<!-- More Countdowns menu -->
+<div class="more-menu" id="moreMenu">
+  <div class="item" data-key="winterBreak">Winter Break</div>
+  <div class="item" data-key="springBreak">Spring Break</div>
+  <div class="item" data-key="thanksgivingBreak">Thanksgiving Break</div>
+  <div class="section">
+    <h4>How long until day is over</h4>
+    <input id="dayOverTime" type="time" />
+    <button id="dayOverGo">Confirm</button>
+    <div id="dayOverResult" style="margin-top:6px;"></div>
+  </div>
+</div>
+
+<!-- Help modal trigger -->
+<button class="help-btn" id="helpBtn">Help</button>
+<div class="modal" id="helpModal">
+  <h2>Help</h2>
+  <p style="white-space:pre-wrap">If there is an issue please just be patient. I'll probably find it soon and get it fixed I apologize in advance. But if something isn't accurate please tell the person you got the website from and eventually it'll get back to me to fix. I'm 1 person not multiple. This website was built with the help from ChatGPT but the idea was entirely human. Thank you-MVM</p>
+  <button id="helpClose">Close</button>
+</div>
 
 <script>
-/* Your original script (unchanged) */
+/* Core data (updated with accurate dates) */
 const events = {
-  lastDay: { name: "Last Day of School", date: "2026-05-28T00:00:00" },
-  winterBreak: { name: "Winter Break", date: "2025-12-22T00:00:00" },
-  springBreak: { name: "Spring Break", date: "2026-03-23T00:00:00" }
+  lastDay:           { name: "Last Day of School",  date: "2026-05-22T00:00:00" }, // adjusted
+  winterBreak:       { name: "Winter Break",        date: "2025-12-22T00:00:00" },
+  springBreak:       { name: "Spring Break",        date: "2026-03-23T00:00:00" },
+  thanksgivingBreak: { name: "Thanksgiving Break",  date: "2025-11-26T00:00:00" }
 };
 
 let selectedEvent = "lastDay";
 
-function calculateRemainingDays(today, finalDay) {
-  const start = new Date(today);
-  start.setHours(0,0,0,0);
+/* Utilities */
+function atMidnight(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
 
-  const end = new Date(finalDay);
-  end.setHours(0,0,0,0);
-
+function calculateRemainingDaysExclusive(today, finalDay) {
+  // Exclusive of today per your request: “reduce by 1 day”
+  const start = atMidnight(today);
+  const end   = atMidnight(finalDay);
   const msPerDay = 24 * 60 * 60 * 1000;
-  const diffTime = end - start;
-
-  return Math.max(0, Math.floor(diffTime / msPerDay) + 1);
+  const diff = Math.floor((end - start) / msPerDay);
+  return Math.max(0, diff);
 }
 
 function formatTime(seconds) {
@@ -192,18 +207,16 @@ function formatTime(seconds) {
 
 function update() {
   const now = new Date();
-  const todayMidnight = new Date(now);
-  todayMidnight.setHours(0,0,0,0);
+  const todayMidnight = atMidnight(now);
 
   const finalDay = new Date(events[selectedEvent].date);
-  const remainingDays = calculateRemainingDays(todayMidnight, finalDay);
+  const remainingDays = calculateRemainingDaysExclusive(todayMidnight, finalDay);
 
+  // seconds until next midnight, showing 24:00:00 at 12:00 AM
   const nextMidnight = new Date(todayMidnight);
   nextMidnight.setDate(nextMidnight.getDate() + 1);
-
-  // seconds until next midnight
   let secondsLeft = Math.floor((nextMidnight - now) / 1000);
-  if (secondsLeft <= 0) secondsLeft = 24 * 3600; // show 24:00:00 at midnight
+  if (secondsLeft <= 0) secondsLeft = 24 * 3600;
 
   // display
   document.getElementById("eventName").textContent = events[selectedEvent].name;
@@ -211,180 +224,85 @@ function update() {
   document.getElementById("countdown").textContent = formatTime(secondsLeft);
 }
 
-// Info modal functions
-function openInfo() {
-  document.getElementById("infoModal").style.display = "block";
-}
-function closeInfo() {
-  document.getElementById("infoModal").style.display = "none";
-}
+/* Info modal */
+function openInfo()  { document.getElementById("infoModal").style.display = "block"; }
+function closeInfo() { document.getElementById("infoModal").style.display = "none"; }
 
-// Dropdown event change
-document.getElementById("eventSelector").addEventListener("change", (e) => {
-  selectedEvent = e.target.value;
-  update();
+/* More Countdowns menu behavior */
+const moreBtn  = document.getElementById("moreBtn");
+const moreMenu = document.getElementById("moreMenu");
+moreBtn.addEventListener("click", () => {
+  moreMenu.style.display = moreMenu.style.display === "block" ? "none" : "block";
+});
+document.addEventListener("click", (e) => {
+  if (!moreMenu.contains(e.target) && e.target !== moreBtn) moreMenu.style.display = "none";
+});
+moreMenu.querySelectorAll(".item").forEach(item => {
+  item.addEventListener("click", () => {
+    selectedEvent = item.getAttribute("data-key");
+    update();
+    moreMenu.style.display = "none";
+  });
 });
 
+/* “How long until day is over” — human, exact phrasing to 3:10 PM */
+const dayOverInput  = document.getElementById("dayOverTime");
+const dayOverBtn    = document.getElementById("dayOverGo");
+const dayOverResult = document.getElementById("dayOverResult");
+// prefill with current local time
+(function prefill() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  dayOverInput.value = `${hh}:${mm}`;
+})();
+function humanLeftLabel(minutes) {
+  // Turn minutes into clear English: “1 hour left”, “2 hours 5 minutes left”, “12 minutes left”
+  if (minutes <= 0) return "School day is over";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const parts = [];
+  if (h > 0) parts.push(h + " " + (h === 1 ? "hour" : "hours"));
+  if (m > 0) parts.push(m + " " + (m === 1 ? "minute" : "minutes"));
+  return parts.join(" ") + " left";
+}
+dayOverBtn.addEventListener("click", () => {
+  const v = dayOverInput.value;
+  if (!v) { dayOverResult.textContent = "Please enter a time."; return; }
+  const [hh, mm] = v.split(":").map(Number);
+  const today = new Date();
+  const entered = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hh, mm, 0, 0);
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 10, 0, 0); // 3:10 PM
+  const diffMin = Math.max(0, Math.round((end - entered) / 60000));
+  dayOverResult.textContent = humanLeftLabel(diffMin);
+});
+
+/* Active countdown info next to the day number */
+const inlineInfoBtn = document.getElementById("inlineInfo");
+const activeInfoModal = document.getElementById("activeInfoModal");
+inlineInfoBtn.addEventListener("click", () => {
+  const ev = events[selectedEvent];
+  const d = new Date(ev.date);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById("activeInfoText").textContent =
+    `${ev.name} on ${d.toLocaleDateString([], { weekday:"long", year:"numeric", month:"long", day:"numeric" })} • ${tz}`;
+  activeInfoModal.style.display = "block";
+});
+document.getElementById("activeInfoClose").addEventListener("click", () => {
+  activeInfoModal.style.display = "none";
+});
+
+/* Help modal */
+document.getElementById("helpBtn").addEventListener("click", () => {
+  document.getElementById("helpModal").style.display = "block";
+});
+document.getElementById("helpClose").addEventListener("click", () => {
+  document.getElementById("helpModal").style.display = "none";
+});
+
+/* Kickoff + tick */
 update();
 setInterval(update, 1000);
-</script>
-
-<script>
-/* === ADD-ON: More Countdowns, exact dates from district calendar,
-   day-over tool to 3:10 PM, per-countdown info button, Help popup. === */
-(function () {
-  // Update dates from district calendar (2025–26)
-  // Thanksgiving Recess begins Wed Nov 26, 2025
-  // Winter Break begins Mon Dec 22, 2025
-  // Spring Break begins Mon Mar 23, 2026
-  // Students’ last day (no emergency days) Fri May 22, 2026
-  events.thanksgivingBreak = { name: "Thanksgiving Break", date: "2025-11-26T00:00:00" };
-  events.winterBreak.date = "2025-12-22T00:00:00";
-  events.springBreak.date = "2026-03-23T00:00:00";
-  events.lastDay.date = "2026-05-22T00:00:00";
-
-  // Ensure Thanksgiving appears in the existing selector
-  const selector = document.getElementById("eventSelector");
-  if (![...selector.options].some(o => o.value === "thanksgivingBreak")) {
-    const opt = document.createElement("option");
-    opt.value = "thanksgivingBreak";
-    opt.textContent = "Thanksgiving Break";
-    selector.appendChild(opt);
-  }
-
-  // Add “More Countdowns” button and menu
-  const topbar = document.querySelector(".topbar");
-  const moreBtn = document.createElement("button");
-  moreBtn.className = "more-btn";
-  moreBtn.textContent = "More Countdowns";
-  const menu = document.createElement("div");
-  menu.className = "more-menu";
-  menu.innerHTML = `
-    <div class="item" data-key="winterBreak">Winter Break</div>
-    <div class="item" data-key="springBreak">Spring Break</div>
-    <div class="item" data-key="thanksgivingBreak">Thanksgiving Break</div>
-    <div class="section">
-      <h4>How long until day is over</h4>
-      <input id="dayOverTime" type="time" />
-      <button id="dayOverGo">Confirm</button>
-      <div id="dayOverResult" style="margin-top:6px;font-family:monospace;"></div>
-    </div>
-  `;
-  topbar.appendChild(moreBtn);
-  document.body.appendChild(menu);
-
-  // Open/close
-  moreBtn.addEventListener("click", () => {
-    menu.style.display = menu.style.display === "block" ? "none" : "block";
-  });
-  document.addEventListener("click", (e) => {
-    if (!menu.contains(e.target) && e.target !== moreBtn) menu.style.display = "none";
-  });
-
-  // Switch countdown by clicking menu items
-  menu.querySelectorAll(".item").forEach(item => {
-    item.addEventListener("click", () => {
-      const key = item.getAttribute("data-key");
-      selector.value = key;
-      selector.dispatchEvent(new Event("change"));
-      menu.style.display = "none";
-    });
-  });
-
-  // How long until day is over (to 3:10 PM)
-  const dayOverInput = menu.querySelector("#dayOverTime");
-  const dayOverBtn = menu.querySelector("#dayOverGo");
-  const dayOverResult = menu.querySelector("#dayOverResult");
-
-  // prefill with current local time
-  (function prefill() {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    dayOverInput.value = `${hh}:${mm}`;
-  })();
-
-  function fmtHMS(sec){
-    const h = String(Math.floor(sec/3600)).padStart(2,"0");
-    const m = String(Math.floor((sec%3600)/60)).padStart(2,"0");
-    const s = String(sec%60).padStart(2,"0");
-    return `${h}:${m}:${s}`;
-  }
-
-  dayOverBtn.addEventListener("click", () => {
-    const v = dayOverInput.value;
-    if (!v) { dayOverResult.textContent = "Please enter a time."; return; }
-    const [hh, mm] = v.split(":").map(Number);
-    const today = new Date();
-    const entered = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hh, mm, 0, 0);
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 10, 0, 0); // 3:10 PM
-    if (entered >= end) {
-      dayOverResult.textContent = "School day is over";
-    } else {
-      const sec = Math.floor((end - entered) / 1000);
-      dayOverResult.textContent = fmtHMS(sec);
-    }
-  });
-
-  // Small info button next to days that says what countdown is active
-  const daysEl = document.getElementById("daysRemaining");
-  const inlineInfo = document.createElement("button");
-  inlineInfo.className = "inline-info-btn";
-  inlineInfo.textContent = "i";
-  daysEl.insertAdjacentElement("afterend", inlineInfo);
-
-  const activeInfoModal = document.createElement("div");
-  activeInfoModal.className = "modal";
-  activeInfoModal.id = "activeInfoModal";
-  activeInfoModal.innerHTML = `
-    <h2>Active Countdown</h2>
-    <p id="activeInfoText"></p>
-    <button id="activeInfoClose">Close</button>
-  `;
-  document.body.appendChild(activeInfoModal);
-  inlineInfo.addEventListener("click", () => {
-    const key = selector.value;
-    const ev = events[key];
-    const d = new Date(ev.date);
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    document.getElementById("activeInfoText").textContent =
-      `${ev.name} on ${d.toLocaleDateString([], { weekday:"long", year:"numeric", month:"long", day:"numeric" })} • ${tz}`;
-    activeInfoModal.style.display = "block";
-  });
-  document.getElementById("activeInfoClose").addEventListener("click", () => {
-    activeInfoModal.style.display = "none";
-  });
-
-  // Help button and popup
-  const helpBtn = document.createElement("button");
-  helpBtn.className = "help-btn";
-  helpBtn.textContent = "Help";
-  document.body.appendChild(helpBtn);
-
-  const helpModal = document.createElement("div");
-  helpModal.className = "modal";
-  helpModal.id = "helpModal";
-  helpModal.innerHTML = `
-    <h2>Help</h2>
-    <p style="white-space:pre-wrap">If there is an issue please just be patient. I'll probably find it soon and get it fixed I apologize in advance. But if something isn't accurate please tell the person you got the website from and eventually it'll get back to me to fix. I'm 1 person not multiple. This website was built with the help from ChatGPT but the idea was entirely human. Thank you-MVM</p>
-    <button id="helpClose">Close</button>
-  `;
-  document.body.appendChild(helpModal);
-  helpBtn.addEventListener("click", () => { helpModal.style.display = "block"; });
-  document.getElementById("helpClose").addEventListener("click", () => { helpModal.style.display = "none"; });
-
-  // Make sure the midnight display shows 24:00:00 exactly at 12:00 AM
-  const originalUpdate = window.update;
-  window.update = function () {
-    originalUpdate();
-    const now = new Date();
-    const todayMidnight = new Date(now); todayMidnight.setHours(0,0,0,0);
-    const nextMidnight = new Date(todayMidnight); nextMidnight.setDate(nextMidnight.getDate() + 1);
-    let secondsLeft = Math.floor((nextMidnight - now) / 1000);
-    if (secondsLeft <= 0) secondsLeft = 24 * 3600;
-    document.getElementById("countdown").textContent = formatTime(secondsLeft);
-  };
-})();
 </script>
 
 </body>
